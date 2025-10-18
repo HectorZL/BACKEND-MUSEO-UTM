@@ -78,7 +78,7 @@ export function mountObraModal() {
                 <p id="obra-detail-descripcion" class="text-gray-700 leading-relaxed"></p>
               </div>
             </div>
-            <div class="p-4 border-t border-gray-200 bg-white flex justify-between sticky bottom-0">
+            <div class="p-4 border-t border-gray-200 bg-white flex justify-between">
               <button id="back-to-image" class="px-6 py-3 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors flex-1 max-w-[48%]">
                 Regresar
               </button>
