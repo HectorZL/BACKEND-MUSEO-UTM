@@ -8,6 +8,8 @@ export function mountObraModal() {
   root.innerHTML = `
     <div class="absolute inset-0 bg-transparent" data-close></div>
     <div class="absolute inset-0 grid place-items-center p-4">
+      <!-- Backdrop that closes the modal -->
+      <div class="absolute inset-0 bg-black/50 -z-10" data-close></div>
       <!-- Image View -->
       <div id="image-view" class="w-full h-full flex flex-col bg-black/0 relative">
         <!-- Zoom Controls - Top Right -->
@@ -34,55 +36,61 @@ export function mountObraModal() {
       </div>
 
       <!-- Details View (initially hidden) -->
-      <div id="details-view" class="hidden w-full h-full bg-white overflow-y-auto">
+      <div id="details-view" class="hidden w-[75vw] h-[75vh] bg-white overflow-y-auto rounded-lg shadow-xl">
         <div class="flex flex-col h-full">
-          <div class="flex flex-col md:flex-row w-full" style="min-height: 40vh;">
+          <div class="flex flex-col md:flex-row w-full" style="min-height: 30vh;">
             <!-- Artwork Image -->
-            <div class="w-full md:w-1/2 p-4 flex items-center justify-center bg-gray-50">
-              <div class="relative w-full h-full max-h-[50vh] flex items-center justify-center">
+            <div class="w-full md:w-1/2 p-3 flex items-center justify-center bg-gray-50">
+              <div class="relative w-full h-full max-h-[40vh] flex items-center justify-center">
                 <img id="obra-detail-img" alt="Obra" class="max-h-full w-auto object-contain"/>
               </div>
             </div>
             <!-- Author Image -->
-            <div class="w-full md:w-1/2 p-4 flex items-center justify-center bg-gray-100 border-t md:border-t-0 md:border-l border-gray-200">
+            <div class="w-full md:w-1/2 p-3 flex items-center justify-center bg-gray-100 border-t md:border-t-0 md:border-l border-gray-200">
               <div class="text-center">
-                <div class="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden mx-auto mb-4 border-4 border-white shadow-lg">
+                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden mx-auto mb-2 border-2 border-white shadow">
                   <img id="autor-detail-img" alt="Autor" class="w-full h-full object-cover"/>
                 </div>
-                <h3 id="obra-detail-autor" class="text-lg font-semibold text-gray-800"></h3>
-                <p id="obra-detail-rol" class="text-sm text-gray-600"></p>
+                <h3 id="obra-detail-autor" class="text-base font-semibold text-gray-800"></h3>
+                <p id="obra-detail-rol" class="text-xs text-gray-600"></p>
               </div>
             </div>
           </div>
           
-          <div class="flex-1 p-6 overflow-y-auto">
-            <header class="mb-6 text-center md:text-left">
-              <h2 id="obra-detail-titulo" class="text-2xl md:text-3xl font-bold text-gray-900 mb-2"></h2>
-              <div class="h-1 w-20 bg-amber-500 mx-auto md:mx-0 my-4"></div>
+          <div class="flex-1 p-4 overflow-y-auto">
+            <header class="mb-4 text-center md:text-left">
+              <h2 id="obra-detail-titulo" class="text-xl font-bold text-gray-900 mb-1"></h2>
+              <div class="h-0.5 w-12 bg-amber-400 mx-auto md:mx-0 my-2"></div>
             </header>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div class="space-y-4">
-                <div class="bg-gray-50 p-4 rounded-lg">
-                  <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Técnica</h3>
-                  <p id="obra-detail-tecnica" class="text-gray-800"></p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <div class="space-y-2">
+                <div class="bg-gray-50 p-3 rounded">
+                  <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Técnica</h3>
+                  <p id="obra-detail-tecnica" class="text-sm text-gray-800"></p>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg">
-                  <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Tamaño</h3>
-                  <p id="obra-detail-tamano" class="text-gray-800"></p>
+                <div class="bg-gray-50 p-3 rounded">
+                  <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Tamaño</h3>
+                  <p id="obra-detail-tamano" class="text-sm text-gray-800"></p>
                 </div>
               </div>
               
-              <div class="bg-gray-50 p-4 rounded-lg">
-                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Descripción</h3>
-                <p id="obra-detail-descripcion" class="text-gray-700 leading-relaxed"></p>
+              <div class="bg-gray-50 p-3 rounded">
+                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Descripción</h3>
+                <p id="obra-detail-descripcion" class="text-sm text-gray-700 leading-snug"></p>
               </div>
             </div>
-            <div class="p-4 border-t border-gray-200 bg-white flex justify-between">
-              <button id="back-to-image" class="px-6 py-3 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors flex-1 max-w-[48%]">
+            <div class="p-3 border-t border-gray-200 bg-white flex justify-between gap-2">
+              <button id="back-to-image" class="px-4 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors flex-1 flex items-center justify-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
                 Regresar
               </button>
-              <button data-close class="px-6 py-3 rounded-lg bg-black text-white hover:bg-neutral-800 transition-colors flex-1 max-w-[48%]">
+              <button data-close class="px-4 py-2 text-sm rounded bg-black text-white hover:bg-gray-800 transition-colors flex-1 flex items-center justify-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 Cerrar
               </button>
             </div>
