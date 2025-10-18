@@ -5,6 +5,9 @@ let dragStartX = 0, dragStartY = 0;
 let translateX = 0, translateY = 0;
 let imgElement = null;
 let root = null;
+let containerElement = null;
+let maxTranslateX = 0;
+let maxTranslateY = 0;
 
 // Handlers nombrados para poder removerlos
 function onWheel(e) {
@@ -12,8 +15,9 @@ function onWheel(e) {
   e.preventDefault();
   const delta = Math.sign(e.deltaY) * -0.1;
   currentZoom = Math.max(1, Math.min(6, currentZoom + delta));
-  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+  updateTransform();
 }
+
 function onMouseDown(e) {
   if (!imgElement || currentZoom === 1) return;
   isDragging = true;
@@ -21,33 +25,80 @@ function onMouseDown(e) {
   dragStartY = e.clientY - translateY;
   imgElement.style.cursor = 'grabbing';
 }
+
 function onMouseMove(e) {
   if (!imgElement || !isDragging) return;
+  e.preventDefault();
   translateX = e.clientX - dragStartX;
   translateY = e.clientY - dragStartY;
-  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+  updateTransform();
 }
+
 function onMouseUp() {
   if (!imgElement) return;
   isDragging = false;
   imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
 }
-function zoomIn() {
+
+function calculateMaxTranslate() {
+  if (!imgElement || !containerElement) return { maxX: 0, maxY: 0 };
+  
+  const containerRect = containerElement.getBoundingClientRect();
+  const imgRect = imgElement.getBoundingClientRect();
+  
+  // Calculate maximum allowed translation to keep image within view
+  const scale = currentZoom;
+  const scaledWidth = imgRect.width * scale;
+  const scaledHeight = imgRect.height * scale;
+  
+  maxTranslateX = Math.max(0, (scaledWidth - containerRect.width) / 2);
+  maxTranslateY = Math.max(0, (scaledHeight - containerRect.height) / 2);
+  
+  return { maxX: maxTranslateX, maxY: maxTranslateY };
+}
+
+function updateTransform() {
+  if (!imgElement || !containerElement) return;
+  
+  // Calculate max translation based on current zoom
+  const { maxX, maxY } = calculateMaxTranslate();
+  
+  // Clamp translation values to keep image within bounds
+  translateX = Math.max(-maxX, Math.min(maxX, translateX));
+  translateY = Math.max(-maxY, Math.min(maxY, translateY));
+  
+  // Apply transform
+  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+  
+  // Update cursor
+  const canDrag = currentZoom > 1.1; // Slight threshold before enabling drag
+  imgElement.style.cursor = canDrag 
+    ? (isDragging ? 'grabbing' : 'grab')
+    : 'default';
+}
+
+export function zoomIn() {
   if (!imgElement) return;
   currentZoom = Math.min(6, currentZoom + 0.25);
-  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
-  imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
+  updateTransform();
 }
-function zoomOut() {
+
+export function zoomOut() {
   if (!imgElement) return;
   currentZoom = Math.max(1, currentZoom - 0.25);
-  if (currentZoom === 1) { translateX = 0; translateY = 0; }
-  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
-  imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
+  if (currentZoom === 1) { 
+    translateX = 0; 
+    translateY = 0; 
+  }
+  updateTransform();
 }
-function zoomReset() {
+
+export function resetZoom() {
   if (!imgElement) return;
-  currentZoom = 1; translateX = 0; translateY = 0; isDragging = false;
+  currentZoom = 1; 
+  translateX = 0; 
+  translateY = 0; 
+  isDragging = false;
   imgElement.style.transform = 'none';
   imgElement.style.cursor = 'default';
 }
@@ -55,34 +106,41 @@ function zoomReset() {
 export function enableImageZoom() {
   root = document.getElementById('obra-modal-root');
   if (!root) return;
+  containerElement = root.querySelector('#image-view > div:first-child');
   imgElement = root.querySelector('#obra-img');
-  if (!imgElement) return;
+  if (!imgElement || !containerElement) return;
+  
+  // Reset zoom and position
+  currentZoom = 1;
+  translateX = 0;
+  translateY = 0;
+  imgElement.style.transform = '';
 
-  // Controles (se crean si no existen)
-  let ui = root.querySelector('[data-zoom-ui]');
-  if (!ui) {
-    const modalContent = root.querySelector('.absolute.inset-0.grid');
-    if (!modalContent) return;
-    ui = document.createElement('div');
-    ui.setAttribute('data-zoom-ui', 'true');
-    ui.className = 'pointer-events-none absolute inset-0';
-    ui.innerHTML = `
-      <div class="pointer-events-auto fixed bottom-4 right-4 grid gap-2">
-        <button id="zoom-in" class="p-2 rounded-lg bg-black/60 text-white" title="Acercar">+</button>
-        <button id="zoom-out" class="p-2 rounded-lg bg-black/60 text-white" title="Alejar">−</button>
-        <button id="zoom-reset" class="p-2 rounded-lg bg-black/60 text-white" title="Restablecer">○</button>
-      </div>`;
-    modalContent.appendChild(ui);
-  }
+  // Add event listeners for zoom controls
+  const zoomInBtn = root.querySelector('#zoom-in');
+  const zoomOutBtn = root.querySelector('#zoom-out');
+  const zoomResetBtn = root.querySelector('#zoom-reset');
 
-  // Listeners
+  // Remove existing event listeners to prevent duplicates
+  imgElement.removeEventListener('wheel', onWheel);
+  imgElement.removeEventListener('mousedown', onMouseDown);
+  window.removeEventListener('mousemove', onMouseMove);
+  window.removeEventListener('mouseup', onMouseUp);
+  if (zoomInBtn) zoomInBtn.removeEventListener('click', zoomIn);
+  if (zoomOutBtn) zoomOutBtn.removeEventListener('click', zoomOut);
+  if (zoomResetBtn) zoomResetBtn.removeEventListener('click', resetZoom);
+
+  // Add event listeners
   imgElement.addEventListener('wheel', onWheel, { passive: false });
   imgElement.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
-  ui.querySelector('#zoom-in')?.addEventListener('click', zoomIn);
-  ui.querySelector('#zoom-out')?.addEventListener('click', zoomOut);
-  ui.querySelector('#zoom-reset')?.addEventListener('click', zoomReset);
+  if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
+
+  // Set initial cursor
+  imgElement.style.cursor = 'default';
 }
 
 export function disableImageZoom() {
