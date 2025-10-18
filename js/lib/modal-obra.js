@@ -36,36 +36,56 @@ export function mountObraModal() {
       <!-- Details View (initially hidden) -->
       <div id="details-view" class="hidden w-full h-full bg-white overflow-y-auto">
         <div class="flex flex-col h-full">
-          <div class="relative w-full" style="height: 40vh; min-height: 300px;">
-            <img id="obra-detail-img" alt="Obra" class="w-full h-full object-cover"/>
-          </div>
-          <div class="flex-1 p-4 overflow-y-auto">
-            <header class="mb-4">
-              <h2 id="obra-detail-titulo" class="text-xl font-bold"></h2>
-              <p id="obra-detail-autor" class="text-sm text-neutral-600"></p>
-            </header>
-            <dl class="space-y-3 text-sm">
-              <div class="border-b border-gray-100 pb-2">
-                <dt class="font-medium text-neutral-700">Técnica</dt>
-                <dd id="obra-detail-tecnica" class="text-neutral-800"></dd>
+          <div class="flex flex-col md:flex-row w-full" style="min-height: 40vh;">
+            <!-- Artwork Image -->
+            <div class="w-full md:w-1/2 p-4 flex items-center justify-center bg-gray-50">
+              <div class="relative w-full h-full max-h-[50vh] flex items-center justify-center">
+                <img id="obra-detail-img" alt="Obra" class="max-h-full w-auto object-contain"/>
               </div>
-              <div class="border-b border-gray-100 pb-2">
-                <dt class="font-medium text-neutral-700">Tamaño</dt>
-                <dd id="obra-detail-tamano" class="text-neutral-800"></dd>
+            </div>
+            <!-- Author Image -->
+            <div class="w-full md:w-1/2 p-4 flex items-center justify-center bg-gray-100 border-t md:border-t-0 md:border-l border-gray-200">
+              <div class="text-center">
+                <div class="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden mx-auto mb-4 border-4 border-white shadow-lg">
+                  <img id="autor-detail-img" alt="Autor" class="w-full h-full object-cover"/>
+                </div>
+                <h3 id="obra-detail-autor" class="text-lg font-semibold text-gray-800"></h3>
+                <p id="obra-detail-rol" class="text-sm text-gray-600"></p>
               </div>
-            </dl>
-            <div class="mt-4">
-              <h3 class="font-medium text-neutral-700 mb-2">Descripción</h3>
-              <p id="obra-detail-descripcion" class="text-neutral-800 leading-relaxed"></p>
             </div>
           </div>
-          <div class="p-4 border-t border-gray-200 bg-white flex justify-between sticky bottom-0">
-            <button id="back-to-image" class="px-6 py-3 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors flex-1 max-w-[48%]">
-              Regresar
-            </button>
-            <button data-close class="px-6 py-3 rounded-lg bg-black text-white hover:bg-neutral-800 transition-colors flex-1 max-w-[48%]">
-              Cerrar
-            </button>
+          
+          <div class="flex-1 p-6 overflow-y-auto">
+            <header class="mb-6 text-center md:text-left">
+              <h2 id="obra-detail-titulo" class="text-2xl md:text-3xl font-bold text-gray-900 mb-2"></h2>
+              <div class="h-1 w-20 bg-amber-500 mx-auto md:mx-0 my-4"></div>
+            </header>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div class="space-y-4">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                  <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Técnica</h3>
+                  <p id="obra-detail-tecnica" class="text-gray-800"></p>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                  <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Tamaño</h3>
+                  <p id="obra-detail-tamano" class="text-gray-800"></p>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Descripción</h3>
+                <p id="obra-detail-descripcion" class="text-gray-700 leading-relaxed"></p>
+              </div>
+            </div>
+            <div class="p-4 border-t border-gray-200 bg-white flex justify-between sticky bottom-0">
+              <button id="back-to-image" class="px-6 py-3 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors flex-1 max-w-[48%]">
+                Regresar
+              </button>
+              <button data-close class="px-6 py-3 rounded-lg bg-black text-white hover:bg-neutral-800 transition-colors flex-1 max-w-[48%]">
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -76,44 +96,39 @@ export function mountObraModal() {
   // Estado inicial
   window.__modalOpen = false;
 
+  // cerrar por capa oscura o botón
+  root.addEventListener('click', (e) => {
+    if (e.target.matches('[data-close]')) hideObraModal();
+  });
 
-// cerrar por capa oscura o botón
-root.addEventListener('click', (e) => {
-if (e.target.matches('[data-close]')) hideObraModal();
-});
+  // ESC para cerrar
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideObraModal();
+  });
 
+  // Trap focus within modal for accessibility
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const focusableElements = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
 
-// ESC para cerrar
-document.addEventListener('keydown', (e) => {
-if (e.key === 'Escape') hideObraModal();
-});
-
-
-// Trap focus within modal for accessibility
-root.addEventListener('keydown', (e) => {
-  if (e.key === 'Tab') {
-    const focusableElements = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    if (e.shiftKey) {
-      // Shift + Tab
-      if (document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
-      }
-    } else {
-      // Tab
-      if (document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        // Tab
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
       }
     }
-  }
-});
-
+  });
 }
-
 
 export function showObraModal(obra, callbacks = {}) {
   console.log('showObraModal called with:', obra);
@@ -137,11 +152,21 @@ export function showObraModal(obra, callbacks = {}) {
   const detailImg = root.querySelector('#obra-detail-img');
   detailImg.src = imageUrl;
   detailImg.alt = obra.titulo;
+  
+  // Set author image
+  const autorImg = root.querySelector('#autor-detail-img');
+  const obraNumber = obra.imagen.match(/\d+/)?.[0] || '01';
+  const autorImageUrl = `images/${obraNumber.padStart(2, '0')}_autor.jpg`;
+  autorImg.src = autorImageUrl;
+  autorImg.alt = obra.autor || 'Autor';
+  
+  // Set text content
   root.querySelector('#obra-detail-titulo').textContent = obra.titulo;
-  root.querySelector('#obra-detail-autor').textContent = `${obra.autor} · ${obra.rol ?? ''}`.trim();
-  root.querySelector('#obra-detail-tecnica').textContent = obra.tecnica || '—';
-  root.querySelector('#obra-detail-tamano').textContent = obra.tamano || '—';
-  root.querySelector('#obra-detail-descripcion').textContent = obra.descripcion || '';
+  root.querySelector('#obra-detail-autor').textContent = obra.autor || '';
+  root.querySelector('#obra-detail-rol').textContent = obra.rol || '';
+  root.querySelector('#obra-detail-tecnica').textContent = obra.tecnica || 'No especificada';
+  root.querySelector('#obra-detail-tamano').textContent = obra.tamano || 'No especificado';
+  root.querySelector('#obra-detail-descripcion').textContent = obra.descripcion || 'Sin descripción disponible.';
 
   // Show image view by default
   root.querySelector('#image-view').classList.remove('hidden');
