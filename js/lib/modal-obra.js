@@ -48,7 +48,7 @@ export function mountObraModal() {
             <!-- Author Image -->
             <div class="w-full md:w-1/2 p-3 flex items-center justify-center bg-gray-100 border-t md:border-t-0 md:border-l border-gray-200">
               <div class="text-center">
-                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden mx-auto mb-2 border-2 border-white shadow">
+                <div class="w-40 h-40 md:w-60 md:h-60 rounded-full overflow-hidden mx-auto mb-2 border-2 border-white shadow">
                   <img id="autor-detail-img" alt="Autor" class="w-full h-full object-cover"/>
                 </div>
                 <h3 id="obra-detail-autor" class="text-base font-semibold text-gray-800"></h3>
