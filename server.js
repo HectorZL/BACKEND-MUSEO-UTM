@@ -107,6 +107,15 @@ app.post('/api/auth/login', async (req, res) => {
 // RUTAS PÚBLICAS (Para la Galería 3D)
 // ===========================================
 
+// GET /api/ping - Ruta para verificar que el servidor está activo
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Servidor activo',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // GET /api/obras
 app.get('/api/obras', async (req, res) => {
   try {
@@ -276,8 +285,37 @@ app.post('/api/admin/colecciones', authMiddleware, async (req, res) => {
 app.use(express.static(__dirname));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
+// --- FUNCIÓN KEEP-ALIVE ---
+function startKeepAlive() {
+  const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+  const minutes = 10;
+  const interval = minutes * 60 * 1000; // 10 minutos en milisegundos
+  
+  console.log(`Configurando Keep-Alive para URL: ${RENDER_EXTERNAL_URL} cada ${minutes} minutos.`);
+
+  setInterval(async () => {
+    try {
+      // Usamos el endpoint de ping que es más ligero y no hace consultas a la base de datos
+      const response = await fetch(`${RENDER_EXTERNAL_URL}/api/ping`); 
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[Keep-Alive] Ping exitoso (${new Date().toLocaleTimeString()}) - ${data.message}`);
+      } else {
+        console.error(`[Keep-Alive] Fallo en el ping: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`[Keep-Alive] Error al hacer fetch: ${error.message}`);
+    }
+  }, interval);
+}
+
+// Inicializar el servidor y el Keep-Alive
 if (process.env.VERCEL !== '1') {
-  app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));
+  app.listen(port, () => {
+    console.log(`Servidor en http://localhost:${port}`);
+    startKeepAlive(); // Iniciar el Keep-Alive
+  });
 }
 
 export default app;
