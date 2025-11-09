@@ -11,12 +11,29 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from './db.js'; // Nuestro módulo de conexión a la BD
 
+// --- ¡NUEVAS IMPORTACIONES PARA IMÁGENES! ---
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+
 // --- Configuración Inicial ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// --- ¡NUEVA CONFIGURACIÓN DE CLOUDINARY! ---
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// --- ¡NUEVA CONFIGURACIÓN DE MULTER! ---
+// Usamos "memoryStorage" porque Render no tiene un sistema de archivos persistente.
+// El archivo se guarda en RAM temporalmente antes de subirlo a Cloudinary.
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 // --- Middlewares Globales ---
 app.use(cors()); // Habilita CORS para el admin
@@ -48,6 +65,29 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+/**
+ * --- ¡NUEVA FUNCIÓN HELPER! ---
+ * Sube un archivo a Cloudinary desde un buffer de memoria
+ */
+const uploadToCloudinary = (fileBuffer, folder) => {
+  return new Promise((resolve, reject) => {
+    // Usamos upload_stream para enviar el buffer directamente
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: folder, resource_type: 'auto' },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result); // Devuelve el objeto con 'secure_url'
+        }
+      }
+    );
+    // Enviamos el buffer al stream
+    uploadStream.end(fileBuffer);
+  });
+};
+
+
 // ===========================================
 // RUTAS DE AUTENTICACIÓN (Públicas)
 // ===========================================
@@ -55,7 +95,6 @@ const authMiddleware = (req, res, next) => {
 // POST /api/auth/register (Crear admin inicial)
 app.post('/api/auth/register', async (req, res) => {
   try {
-    // NOTA: En producción, deberías proteger esta ruta para que nadie más pueda crear admins.
     const { nombre, apellido, cedula, email, password, rol } = req.body;
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
@@ -110,7 +149,6 @@ app.post('/api/auth/login', async (req, res) => {
 // GET /api/obras
 app.get('/api/obras', async (req, res) => {
   try {
-    // Usamos LEFT JOIN para traer datos del autor y colección si existen
     const query = `
       SELECT 
         o.*, 
@@ -155,7 +193,7 @@ app.get('/api/obras/:id', async (req, res) => {
   }
 });
 
-// GET /api/autores, colecciones, exhibiciones (Públicos si se necesitan)
+// GET /api/autores, colecciones, exhibiciones
 app.get('/api/autores', async (req, res) => {
   const resDb = await db.query('SELECT * FROM autores ORDER BY nombre');
   res.json(resDb.rows);
@@ -173,16 +211,27 @@ app.get('/api/exhibiciones', async (req, res) => {
 // RUTAS DE ADMINISTRACIÓN (Protegidas)
 // ===========================================
 
-// --- OBRAS ---
-app.post('/api/admin/obras', authMiddleware, async (req, res) => {
+// --- OBRAS (¡MODIFICADAS!) ---
+
+// POST /api/admin/obras
+// 'upload.single' busca un campo llamado 'imagen_file' en el FormData
+app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async (req, res) => {
   try {
-    // AHORA: Recibimos 'imagen_url' como texto directamente del body
-    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imagen_url } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ message: 'El archivo de imagen es requerido' });
+    }
+
+    // 1. Subir la imagen a Cloudinary
+    const uploadResponse = await uploadToCloudinary(req.file.buffer, 'galeria-museo-obras');
+    const imageUrl = uploadResponse.secure_url; // URL de la imagen en la nube
+
+    // 2. Insertar en BD
+    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
     const newObra = await db.query(
       `INSERT INTO obras (titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id]
+      [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imageUrl, autor_id, coleccion_id]
     );
     res.status(201).json(newObra.rows[0]);
   } catch (err) {
@@ -191,16 +240,38 @@ app.post('/api/admin/obras', authMiddleware, async (req, res) => {
   }
 });
 
-app.put('/api/admin/obras/:id', authMiddleware, async (req, res) => {
+// PUT /api/admin/obras/:id
+app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imagen_url } = req.body;
+    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
-    const updatedObra = await db.query(
-      `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8, imagen_url=$9 
-       WHERE id=$10 RETURNING *`,
-      [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imagen_url, id]
-    );
+    let imageUrl; // Variable para la nueva URL
+    
+    // 1. Si el usuario sube una NUEVA imagen, la procesamos
+    if (req.file) {
+      const uploadResponse = await uploadToCloudinary(req.file.buffer, 'galeria-museo-obras');
+      imageUrl = uploadResponse.secure_url;
+      // (Opcional: aquí podrías borrar la imagen antigua de Cloudinary)
+    }
+
+    // 2. Actualizar la BD
+    let updatedObra;
+    if (imageUrl) {
+      // Si hay imagen nueva, actualizamos la columna imagen_url
+      updatedObra = await db.query(
+        `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8, imagen_url=$9 
+         WHERE id=$10 RETURNING *`,
+        [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imageUrl, id]
+      );
+    } else {
+      // Si NO hay imagen nueva, actualizamos todo MENOS imagen_url
+      updatedObra = await db.query(
+        `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8
+         WHERE id=$9 RETURNING *`,
+        [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, id]
+      );
+    }
     
     if (updatedObra.rows.length === 0) return res.status(404).json('Obra no encontrada');
     res.json(updatedObra.rows[0]);
@@ -210,24 +281,45 @@ app.put('/api/admin/obras/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/admin/obras/:id
 app.delete('/api/admin/obras/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    await db.query('DELETE FROM obras WHERE id = $1', [id]);
-    res.json({ message: 'Obra eliminada' });
+    // Opcional: Borrar de Cloudinary primero
+    // 1. Obtener la URL de la imagen
+    // 2. Extraer el 'public_id' de la URL
+    // 3. Llamar a cloudinary.uploader.destroy(public_id)
+    // 4. Borrar de la BD
+    await db.query('DELETE FROM obras_exhibiciones WHERE obra_id = $1', [id]); // Borrar relaciones primero
+    const deleteOp = await db.query('DELETE FROM obras WHERE id = $1 RETURNING *', [id]);
+    
+    if (deleteOp.rows.length === 0) {
+      return res.status(404).json('Obra no encontrada');
+    }
+    res.json({ message: 'Obra eliminada', obra: deleteOp.rows[0] });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Error del servidor');
   }
 });
 
-// --- AUTORES ---
-app.post('/api/admin/autores', authMiddleware, async (req, res) => {
+// --- AUTORES (¡MODIFICADOS!) ---
+
+// POST /api/admin/autores
+app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async (req, res) => {
   try {
-    const { nombre, apellido, rol_academico, foto_url } = req.body;
+    const { nombre, apellido, rol_academico } = req.body;
+    let fotoUrl = null; // Default
+
+    // Si se sube una foto de autor, procesarla
+    if (req.file) {
+      const uploadResponse = await uploadToCloudinary(req.file.buffer, 'galeria-museo-autores');
+      fotoUrl = uploadResponse.secure_url;
+    }
+    
     const newAutor = await db.query(
       'INSERT INTO autores (nombre, apellido, rol_academico, foto_url) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nombre, apellido, rol_academico, foto_url]
+      [nombre, apellido, rol_academico, fotoUrl]
     );
     res.status(201).json(newAutor.rows[0]);
   } catch (err) {
@@ -236,14 +328,32 @@ app.post('/api/admin/autores', authMiddleware, async (req, res) => {
   }
 });
 
-app.put('/api/admin/autores/:id', authMiddleware, async (req, res) => {
-  try {
+// PUT /api/admin/autores/:id
+app.put('/api/admin/autores/:id', authMiddleware, upload.single('foto_file'), async (req, res) => {
+   try {
     const { id } = req.params;
-    const { nombre, apellido, rol_academico, foto_url } = req.body;
-    const updatedAutor = await db.query(
-      'UPDATE autores SET nombre=$1, apellido=$2, rol_academico=$3, foto_url=$4 WHERE id=$5 RETURNING *',
-      [nombre, apellido, rol_academico, foto_url, id]
-    );
+    const { nombre, apellido, rol_academico } = req.body;
+    let fotoUrl; // Variable para la nueva URL
+    
+    if (req.file) {
+      const uploadResponse = await uploadToCloudinary(req.file.buffer, 'galeria-museo-autores');
+      fotoUrl = uploadResponse.secure_url;
+    }
+
+    let updatedAutor;
+    if (fotoUrl) {
+      // Si hay foto nueva
+      updatedAutor = await db.query(
+        'UPDATE autores SET nombre=$1, apellido=$2, rol_academico=$3, foto_url=$4 WHERE id=$5 RETURNING *',
+        [nombre, apellido, rol_academico, fotoUrl, id]
+      );
+    } else {
+      // Si NO hay foto nueva
+      updatedAutor = await db.query(
+        'UPDATE autores SET nombre=$1, apellido=$2, rol_academico=$3 WHERE id=$4 RETURNING *',
+        [nombre, apellido, rol_academico, id]
+      );
+    }
     res.json(updatedAutor.rows[0]);
   } catch (err) {
     console.error(err.message);
@@ -251,9 +361,11 @@ app.put('/api/admin/autores/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/admin/autores/:id
 app.delete('/api/admin/autores/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
+    // Opcional: Borrar foto de Cloudinary
     await db.query('DELETE FROM autores WHERE id = $1', [id]);
     res.json({ message: 'Autor eliminado' });
   } catch (err) {
@@ -262,22 +374,101 @@ app.delete('/api/admin/autores/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// --- COLECCIONES & EXHIBICIONES (Igual que antes, son solo texto) ---
+// --- COLECCIONES (Sin cambios, solo texto) ---
 app.post('/api/admin/colecciones', authMiddleware, async (req, res) => {
-  const { nombre, descripcion } = req.body;
-  const r = await db.query('INSERT INTO colecciones (nombre, descripcion) VALUES ($1, $2) RETURNING *', [nombre, descripcion]);
-  res.status(201).json(r.rows[0]);
+  try {
+    const { nombre, descripcion } = req.body;
+    const r = await db.query('INSERT INTO colecciones (nombre, descripcion) VALUES ($1, $2) RETURNING *', [nombre, descripcion]);
+    res.status(201).json(r.rows[0]);
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
 });
-// ... (Resto de CRUD colecciones y exhibiciones igual que antes) ...
+
+app.put('/api/admin/colecciones/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion } = req.body;
+    const r = await db.query('UPDATE colecciones SET nombre=$1, descripcion=$2 WHERE id=$3 RETURNING *', [nombre, descripcion, id]);
+    res.json(r.rows[0]);
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
+app.delete('/api/admin/colecciones/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM colecciones WHERE id = $1', [id]);
+    res.json({ message: 'Colección eliminada' });
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
+// --- EXHIBICIONES (Sin cambios, solo texto) ---
+app.post('/api/admin/exhibiciones', authMiddleware, async (req, res) => {
+  try {
+    const { nombre, descripcion, fecha_inicio, fecha_fin } = req.body;
+    const r = await db.query('INSERT INTO exhibiciones (nombre, descripcion, fecha_inicio, fecha_fin) VALUES ($1, $2, $3, $4) RETURNING *', [nombre, descripcion, fecha_inicio, fecha_fin]);
+    res.status(201).json(r.rows[0]);
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
+app.put('/api/admin/exhibiciones/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, descripcion, fecha_inicio, fecha_fin } = req.body;
+    const r = await db.query('UPDATE exhibiciones SET nombre=$1, descripcion=$2, fecha_inicio=$3, fecha_fin=$4 WHERE id=$5 RETURNING *', [nombre, descripcion, fecha_inicio, fecha_fin, id]);
+    res.json(r.rows[0]);
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
+app.delete('/api/admin/exhibiciones/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM exhibiciones WHERE id = $1', [id]);
+    res.json({ message: 'Exhibición eliminada' });
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
+
+// --- RELACIONES Obras <-> Exhibiciones ---
+app.post('/api/admin/exhibiciones/:id/add-obra', authMiddleware, async (req, res) => {
+  try {
+    const { id: exhibicion_id } = req.params;
+    const { obra_id } = req.body;
+    const r = await db.query('INSERT INTO obras_exhibiciones (obra_id, exhibicion_id) VALUES ($1, $2) RETURNING *', [obra_id, exhibicion_id]);
+    res.status(201).json(r.rows[0]);
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
+app.delete('/api/admin/exhibiciones/:id/remove-obra/:obra_id', authMiddleware, async (req, res) => {
+  try {
+    const { id: exhibicion_id, obra_id } = req.params;
+    await db.query('DELETE FROM obras_exhibiciones WHERE obra_id = $1 AND exhibicion_id = $2', [obra_id, exhibicion_id]);
+    res.json({ message: 'Relación eliminada' });
+  } catch (err) { console.error(err.message); res.status(500).send('Error del servidor'); }
+});
+
 
 // ===========================================
-// SERVIDOR DE ARCHIVOS ESTÁTICOS
+// SERVIDOR DE ARCHIVOS ESTÁTICOS (Frontend)
 // ===========================================
+// Esto debe ir DESPUÉS de todas las rutas de la API
 app.use(express.static(__dirname));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
+// Ruta "catch-all" que sirve el index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// --- Manejador de Errores Global ---
+app.use((err, req, res, next) => {
+  console.error('Error no manejado:', err.stack);
+  res.status(500).send('¡Algo salió mal en el servidor!');
+});
+
+// --- Iniciar el Servidor ---
 if (process.env.VERCEL !== '1') {
-  app.listen(port, () => console.log(`Servidor en http://localhost:${port}`));
+  app.listen(port, () => {
+    console.log(`Servidor ejecutándose en http://localhost:${port}`);
+  });
 }
 
+// Exportar 'app' para Vercel/Render
 export default app;
