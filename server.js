@@ -146,6 +146,15 @@ app.post('/api/auth/login', async (req, res) => {
 // RUTAS PÚBLICAS (Para la Galería 3D)
 // ===========================================
 
+// GET /api/ping - Ruta para verificar que el servidor está activo
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Servidor activo',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // GET /api/obras
 app.get('/api/obras', async (req, res) => {
   try {
@@ -229,8 +238,8 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
     const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
     const newObra = await db.query(
-      `INSERT INTO obras (titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO obras (titulo, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
+       VALUES ($1, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imageUrl, autor_id, coleccion_id]
     );
     res.status(201).json(newObra.rows[0]);
@@ -452,6 +461,7 @@ app.delete('/api/admin/exhibiciones/:id/remove-obra/:obra_id', authMiddleware, a
 // Esto debe ir DESPUÉS de todas las rutas de la API
 app.use(express.static(__dirname));
 
+
 // Ruta "catch-all" que sirve el index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -467,6 +477,39 @@ app.use((err, req, res, next) => {
 if (process.env.VERCEL !== '1') {
   app.listen(port, () => {
     console.log(`Servidor ejecutándose en http://localhost:${port}`);
+  });
+}
+
+// --- FUNCIÓN KEEP-ALIVE ---
+function startKeepAlive() {
+  const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+  const minutes = 10;
+  const interval = minutes * 60 * 1000; // 10 minutos en milisegundos
+  
+  console.log(`Configurando Keep-Alive para URL: ${RENDER_EXTERNAL_URL} cada ${minutes} minutos.`);
+
+  setInterval(async () => {
+    try {
+      // Usamos el endpoint de ping que es más ligero y no hace consultas a la base de datos
+      const response = await fetch(`${RENDER_EXTERNAL_URL}/api/ping`); 
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[Keep-Alive] Ping exitoso (${new Date().toLocaleTimeString()}) - ${data.message}`);
+      } else {
+        console.error(`[Keep-Alive] Fallo en el ping: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`[Keep-Alive] Error al hacer fetch: ${error.message}`);
+    }
+  }, interval);
+}
+
+// Inicializar el servidor y el Keep-Alive
+if (process.env.VERCEL !== '1') {
+  app.listen(port, () => {
+    console.log(`Servidor en http://localhost:${port}`);
+    startKeepAlive(); // Iniciar el Keep-Alive
   });
 }
 
