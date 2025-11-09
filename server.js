@@ -95,13 +95,13 @@ const uploadToCloudinary = (fileBuffer, folder) => {
 // POST /api/auth/register (Crear admin inicial)
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { nombre, apellido, cedula, email, password, rol } = req.body;
+    const { nombre, apellido, email, password, rol } = req.body;
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
     const newUser = await db.query(
-      'INSERT INTO usuarios_admin (nombre, apellido, cedula, email, password_hash, rol) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, rol',
-      [nombre, apellido, cedula, email, password_hash, rol]
+      'INSERT INTO usuarios_admin (nombre, apellido, email, password_hash, rol) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, rol',
+      [nombre, apellido, email, password_hash, rol]
     );
     res.status(201).json(newUser.rows[0]);
   } catch (err) {
@@ -163,7 +163,7 @@ app.get('/api/obras', async (req, res) => {
         o.*, 
         a.nombre AS autor_nombre, 
         a.apellido AS autor_apellido,
-        a.rol_academico AS autor_rol,
+        a.ocupacion AS autor_rol,
         c.nombre AS coleccion_nombre
       FROM obras o
       LEFT JOIN autores a ON o.autor_id = a.id
@@ -239,7 +239,7 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
     
     const newObra = await db.query(
       `INSERT INTO obras (titulo, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
-       VALUES ($1, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imageUrl, autor_id, coleccion_id]
     );
     res.status(201).json(newObra.rows[0]);
@@ -253,7 +253,7 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
 app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
+    const { titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
     let imageUrl; // Variable para la nueva URL
     
@@ -269,15 +269,15 @@ app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), as
     if (imageUrl) {
       // Si hay imagen nueva, actualizamos la columna imagen_url
       updatedObra = await db.query(
-        `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8, imagen_url=$9 
-         WHERE id=$10 RETURNING *`,
+        `UPDATE obras SET titulo=$1, descripcion=$2, tecnica=$3, tamano=$4, fecha_creacion=$5, autor_id=$6, coleccion_id=$7, imagen_url=$8 
+         WHERE id=$9 RETURNING *`,
         [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imageUrl, id]
       );
     } else {
       // Si NO hay imagen nueva, actualizamos todo MENOS imagen_url
       updatedObra = await db.query(
-        `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8
-         WHERE id=$9 RETURNING *`,
+        `UPDATE obras SET titulo=$1, descripcion=$2, tecnica=$3, tamano=$4, fecha_creacion=$5, autor_id=$6, coleccion_id=$7
+         WHERE id=$8 RETURNING *`,
         [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, id]
       );
     }
@@ -317,7 +317,7 @@ app.delete('/api/admin/obras/:id', authMiddleware, async (req, res) => {
 // POST /api/admin/autores
 app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async (req, res) => {
   try {
-    const { nombre, apellido, rol_academico } = req.body;
+    const { nombre, apellido, ocupacion } = req.body;
     let fotoUrl = null; // Default
 
     // Si se sube una foto de autor, procesarla
@@ -327,8 +327,8 @@ app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async
     }
     
     const newAutor = await db.query(
-      'INSERT INTO autores (nombre, apellido, rol_academico, foto_url) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nombre, apellido, rol_academico, fotoUrl]
+      'INSERT INTO autores (nombre, apellido, ocupacion, foto_url) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nombre, apellido, ocupacion, fotoUrl]
     );
     res.status(201).json(newAutor.rows[0]);
   } catch (err) {
@@ -341,7 +341,7 @@ app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async
 app.put('/api/admin/autores/:id', authMiddleware, upload.single('foto_file'), async (req, res) => {
    try {
     const { id } = req.params;
-    const { nombre, apellido, rol_academico } = req.body;
+    const { nombre, apellido, ocupacion } = req.body;
     let fotoUrl; // Variable para la nueva URL
     
     if (req.file) {
@@ -353,14 +353,14 @@ app.put('/api/admin/autores/:id', authMiddleware, upload.single('foto_file'), as
     if (fotoUrl) {
       // Si hay foto nueva
       updatedAutor = await db.query(
-        'UPDATE autores SET nombre=$1, apellido=$2, rol_academico=$3, foto_url=$4 WHERE id=$5 RETURNING *',
-        [nombre, apellido, rol_academico, fotoUrl, id]
+        'UPDATE autores SET nombre=$1, apellido=$2, ocupacion=$3, foto_url=$4 WHERE id=$5 RETURNING *',
+        [nombre, apellido, ocupacion, fotoUrl, id]
       );
     } else {
       // Si NO hay foto nueva
       updatedAutor = await db.query(
-        'UPDATE autores SET nombre=$1, apellido=$2, rol_academico=$3 WHERE id=$4 RETURNING *',
-        [nombre, apellido, rol_academico, id]
+        'UPDATE autores SET nombre=$1, apellido=$2, ocupacion=$3 WHERE id=$4 RETURNING *',
+        [nombre, apellido, ocupacion, id]
       );
     }
     res.json(updatedAutor.rows[0]);
