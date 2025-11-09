@@ -5,7 +5,6 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// ¡Añadimos 'basename' para seguridad del nombre de archivo!
 import { dirname, basename } from 'path';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -241,13 +240,12 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
       'galeria-museo-obras'
     );
 
-    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
+    const { titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
-    // --- (Corrección del 'slug' ya incluida) ---
     const newObra = await db.query(
-      `INSERT INTO obras (titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
+      `INSERT INTO obras (titulo, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, imageUrl, autor_id, coleccion_id]
+      [titulo, descripcion, tecnica, tamano, fecha_creacion, imageUrl, autor_id, coleccion_id]
     );
     res.status(201).json(newObra.rows[0]);
   } catch (err) {
@@ -260,7 +258,7 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
 app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
+    const { titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
     let imageUrl;
     
@@ -275,18 +273,16 @@ app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), as
 
     let updatedObra;
     if (imageUrl) {
-      // --- (Corrección del 'slug' ya incluida) ---
       updatedObra = await db.query(
-        `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8, imagen_url=$9 
-         WHERE id=$10 RETURNING *`,
-        [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imageUrl, id]
+        `UPDATE obras SET titulo=$1, descripcion=$2, tecnica=$3, tamano=$4, fecha_creacion=$5, autor_id=$6, coleccion_id=$7, imagen_url=$8 
+         WHERE id=$9 RETURNING *`,
+        [titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, imageUrl, id]
       );
     } else {
-      // --- (Corrección del 'slug' ya incluida) ---
       updatedObra = await db.query(
-        `UPDATE obras SET titulo=$1, slug=$2, descripcion=$3, tecnica=$4, tamano=$5, fecha_creacion=$6, autor_id=$7, coleccion_id=$8
-         WHERE id=$9 RETURNING *`,
-        [titulo, slug, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, id]
+        `UPDATE obras SET titulo=$1, descripcion=$2, tecnica=$3, tamano=$4, fecha_creacion=$5, autor_id=$6, coleccion_id=$7
+         WHERE id=$8 RETURNING *`,
+        [titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, id]
       );
     }
     
