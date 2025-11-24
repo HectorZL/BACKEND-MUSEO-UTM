@@ -33,7 +33,7 @@ export class App {
       this.scene = this.gallery.getScene();
       
       this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      // AJUSTE: Empezar más cerca del centro (Z=3.5 en lugar de halfL-4) para ver la intro grande
+      // AJUSTE: Empezar más cerca del centro (Z=3.5)
       this.camera.position.set(0, 2, 3.5);
 
       this.setupNavigation();
@@ -75,8 +75,6 @@ export class App {
     this.targets = [];
 
     // --- TARGET 0: INTRO ---
-    // AJUSTE: Acercar la cámara a 3.5m del centro (antes 5.0m)
-    // El muro está en Z=0. Cámara en Z=3.5 mirando a Z=0.
     const introTargetPos = new THREE.Vector3(0, 2.0, 3.5); 
     const dummyIntro = new THREE.Object3D();
     dummyIntro.position.copy(introTargetPos);
@@ -95,11 +93,57 @@ export class App {
     const halfW = this.gallery.halfW;
     const wallOffset = 0.2;
 
+    // CONFIGURACIÓN VISUAL "SIEMPRE A LA DERECHA"
+    // Define el recorrido para que al pulsar -> la cámara siempre se mueva a la derecha visualmente.
     const wallsConfig = [
-        { id: 0, length: roomL, fixedCoord: -halfW+wallOffset, isXFixed: true, startCoord: halfL, dir: -1, rotY: Math.PI/2, normal: new THREE.Vector3(1,0,0) },
-        { id: 1, length: roomW, fixedCoord: -halfL+wallOffset, isXFixed: false,startCoord: -halfW,dir: 1, rotY: 0,          normal: new THREE.Vector3(0,0,1) },
-        { id: 2, length: roomL, fixedCoord: halfW-wallOffset,  isXFixed: true, startCoord: -halfL,dir: 1, rotY: -Math.PI/2, normal: new THREE.Vector3(-1,0,0) },
-        { id: 3, length: roomW, fixedCoord: halfL-wallOffset,  isXFixed: false,startCoord: halfW, dir: -1, rotY: Math.PI,    normal: new THREE.Vector3(0,0,-1) }
+        // 1. PARED DERECHA (Este): Recorrer de "Lejos" (-Z) a "Cerca" (+Z)
+        // Al mirar esta pared (+X), moverse a +Z es moverse a la DERECHA.
+        { 
+            id: 2, 
+            length: roomL, 
+            fixedCoord: halfW - wallOffset, 
+            isXFixed: true, 
+            startCoord: -halfL, // Empieza al fondo
+            dir: 1,             // Viene hacia acá (+Z)
+            rotY: -Math.PI/2, 
+            normal: new THREE.Vector3(-1, 0, 0) 
+        },
+        // 2. PARED ATRÁS (Sur): Recorrer de Derecha (+X) a Izquierda (-X)
+        // Al mirar esta pared (+Z), moverse a -X es moverse a la DERECHA.
+        { 
+            id: 3, 
+            length: roomW, 
+            fixedCoord: halfL - wallOffset, 
+            isXFixed: false,
+            startCoord: halfW,  // Empieza a la derecha
+            dir: -1,            // Va a la izquierda
+            rotY: Math.PI,    
+            normal: new THREE.Vector3(0, 0, -1) 
+        },
+        // 3. PARED IZQUIERDA (Oeste): Recorrer de "Cerca" (+Z) a "Lejos" (-Z)
+        // Al mirar esta pared (-X), moverse a -Z es moverse a la DERECHA.
+        { 
+            id: 0, 
+            length: roomL, 
+            fixedCoord: -halfW + wallOffset, 
+            isXFixed: true, 
+            startCoord: halfL,  // Empieza cerca
+            dir: -1,            // Va al fondo
+            rotY: Math.PI/2, 
+            normal: new THREE.Vector3(1, 0, 0) 
+        },
+        // 4. PARED FRONTAL (Norte): Recorrer de Izquierda (-X) a Derecha (+X)
+        // Al mirar esta pared (-Z), moverse a +X es moverse a la DERECHA.
+        { 
+            id: 1, 
+            length: roomW, 
+            fixedCoord: -halfL + wallOffset, 
+            isXFixed: false,
+            startCoord: -halfW, // Empieza a la izquierda
+            dir: 1,             // Va a la derecha
+            rotY: 0,           
+            normal: new THREE.Vector3(0, 0, 1) 
+        }
     ];
 
     const totalArtworks = this.obras.length;
