@@ -33,8 +33,8 @@ export class App {
       this.scene = this.gallery.getScene();
       
       this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      // AJUSTE: Empezar más cerca del centro (Z=3.5)
-      this.camera.position.set(0, 2, 3.5);
+      // AJUSTE: Empezar a la altura de los ojos de los cuadros (Z=3.5, Y=2.2)
+      this.camera.position.set(0, 2.2, 3.5);
 
       this.setupNavigation();
       this.setupInputs();
@@ -75,10 +75,11 @@ export class App {
     this.targets = [];
 
     // --- TARGET 0: INTRO ---
-    const introTargetPos = new THREE.Vector3(0, 2.0, 3.5); 
+    // Ajustado a Y=2.2 para consistencia
+    const introTargetPos = new THREE.Vector3(0, 2.2, 3.5); 
     const dummyIntro = new THREE.Object3D();
     dummyIntro.position.copy(introTargetPos);
-    dummyIntro.lookAt(this.introObject.position); 
+    dummyIntro.lookAt(this.introObject.position.x, 2.2, this.introObject.position.z); 
     dummyIntro.rotateY(Math.PI); 
     
     this.targets.push({
@@ -94,53 +95,48 @@ export class App {
     const wallOffset = 0.2;
 
     // CONFIGURACIÓN VISUAL "SIEMPRE A LA DERECHA"
-    // Define el recorrido para que al pulsar -> la cámara siempre se mueva a la derecha visualmente.
     const wallsConfig = [
-        // 1. PARED DERECHA (Este): Recorrer de "Lejos" (-Z) a "Cerca" (+Z)
-        // Al mirar esta pared (+X), moverse a +Z es moverse a la DERECHA.
+        // 1. PARED DERECHA (Este)
         { 
             id: 2, 
             length: roomL, 
             fixedCoord: halfW - wallOffset, 
             isXFixed: true, 
-            startCoord: -halfL, // Empieza al fondo
-            dir: 1,             // Viene hacia acá (+Z)
+            startCoord: -halfL, 
+            dir: 1, 
             rotY: -Math.PI/2, 
             normal: new THREE.Vector3(-1, 0, 0) 
         },
-        // 2. PARED ATRÁS (Sur): Recorrer de Derecha (+X) a Izquierda (-X)
-        // Al mirar esta pared (+Z), moverse a -X es moverse a la DERECHA.
+        // 2. PARED ATRÁS (Sur)
         { 
             id: 3, 
             length: roomW, 
             fixedCoord: halfL - wallOffset, 
             isXFixed: false,
-            startCoord: halfW,  // Empieza a la derecha
-            dir: -1,            // Va a la izquierda
+            startCoord: halfW, 
+            dir: -1, 
             rotY: Math.PI,    
             normal: new THREE.Vector3(0, 0, -1) 
         },
-        // 3. PARED IZQUIERDA (Oeste): Recorrer de "Cerca" (+Z) a "Lejos" (-Z)
-        // Al mirar esta pared (-X), moverse a -Z es moverse a la DERECHA.
+        // 3. PARED IZQUIERDA (Oeste)
         { 
             id: 0, 
             length: roomL, 
             fixedCoord: -halfW + wallOffset, 
             isXFixed: true, 
-            startCoord: halfL,  // Empieza cerca
-            dir: -1,            // Va al fondo
+            startCoord: halfL, 
+            dir: -1, 
             rotY: Math.PI/2, 
             normal: new THREE.Vector3(1, 0, 0) 
         },
-        // 4. PARED FRONTAL (Norte): Recorrer de Izquierda (-X) a Derecha (+X)
-        // Al mirar esta pared (-Z), moverse a +X es moverse a la DERECHA.
+        // 4. PARED FRONTAL (Norte)
         { 
             id: 1, 
             length: roomW, 
             fixedCoord: -halfL + wallOffset, 
             isXFixed: false,
-            startCoord: -halfW, // Empieza a la izquierda
-            dir: 1,             // Va a la derecha
+            startCoord: -halfW, 
+            dir: 1, 
             rotY: 0,           
             normal: new THREE.Vector3(0, 0, 1) 
         }
@@ -202,14 +198,18 @@ export class App {
             this.artworksInstances.push(artGroup);
 
             const camDistance = 2.5; 
+            
+            // --- CORRECCIÓN DE PERSPECTIVA ---
+            // Cambiamos la altura Y de 1.7 a 2.2 para que coincida con la altura de los cuadros.
             const camPos = new THREE.Vector3(
                 x + (wall.normal.x * camDistance),
-                1.7,
+                2.2, // <--- CAMBIO AQUÍ (Antes 1.7)
                 z + (wall.normal.z * camDistance)
             );
 
             const dummy = new THREE.Object3D();
             dummy.position.copy(camPos);
+            // La cámara mira exactamente al centro del cuadro (Y=2.2)
             dummy.lookAt(x, 2.2, z); 
             dummy.rotateY(Math.PI);
 
