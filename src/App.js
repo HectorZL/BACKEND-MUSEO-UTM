@@ -232,6 +232,10 @@ export class App {
     window.addEventListener('resize', this.onWindowResize);
     document.addEventListener('keydown', this.onKeyDown);
 
+    // Touch events for mobile
+    document.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
+    document.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
+
     const navLeft = document.getElementById('navLeft');
     const navRight = document.getElementById('navRight');
 
@@ -273,14 +277,19 @@ export class App {
       }
     });
   }
-
   setNavigationLocked(locked) {
     this.navLocked = locked;
     const navLeft = document.getElementById('navLeft');
     const navRight = document.getElementById('navRight');
+    const homeBtn = document.getElementById('homeBtn'); // Botón de inicio
+    const infoIcon = document.getElementById('infoIcon'); // Ícono de información general
 
     if (navLeft) navLeft.style.display = locked ? 'none' : 'flex';
     if (navRight) navRight.style.display = locked ? 'none' : 'flex';
+
+    // Ocultar botón de inicio e info cuando el modal está abierto (locked es true)
+    if (homeBtn) homeBtn.style.display = locked ? 'none' : 'flex';
+    if (infoIcon) infoIcon.style.display = locked ? 'none' : 'flex';
   }
 
   setupModalStateSync() {
@@ -346,6 +355,27 @@ export class App {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  // --- MOBILE TOUCH SUPPORT ---
+  onTouchStart(e) {
+    this.touchStartX = e.changedTouches[0].screenX;
+  }
+
+  onTouchEnd(e) {
+    if (this.navLocked) return;
+    this.touchEndX = e.changedTouches[0].screenX;
+    this.handleSwipe();
+  }
+
+  handleSwipe() {
+    const sensitivity = 50; // Umbral mínimo para considerar swipe
+    if (this.touchEndX < this.touchStartX - sensitivity) {
+      if (!this.navLocked) this.nextSlide(); // Deslizar izq -> Siguiente
+    }
+    if (this.touchEndX > this.touchStartX + sensitivity) {
+      if (!this.navLocked) this.prevSlide(); // Deslizar der -> Anterior
+    }
   }
 
   animate() {

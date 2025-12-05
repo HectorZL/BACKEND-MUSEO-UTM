@@ -3,37 +3,46 @@ let currentZoom = 1;
 let isDragging = false;
 let dragStartX = 0, dragStartY = 0;
 let translateX = 0, translateY = 0;
+let lastTouchDistance = 0; // Para el pinch zoom
+
 let imgElement = null;
 let root = null;
 let containerElement = null;
 
-// Handlers
+// --- UTILS ---
+function getDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(dx, dy);
+}
+
+// --- HANDLERS ---
+
 function onWheel(e) {
   if (!imgElement) return;
   e.preventDefault();
-  
+
   const delta = Math.sign(e.deltaY) * -0.25;
   const newZoom = Math.max(1, Math.min(8, currentZoom + delta));
-  
-  // Lógica para hacer zoom hacia el puntero del mouse con la rueda (opcional, pero recomendada)
-  // Si prefieres solo el comportamiento anterior (zoom al centro), comenta las siguientes 4 líneas:
+
+  // Zoom hacia el puntero del mouse
   const rect = imgElement.getBoundingClientRect();
   const offsetX = e.clientX - (rect.left + rect.width / 2);
   const offsetY = e.clientY - (rect.top + rect.height / 2);
   const factor = newZoom / currentZoom;
-  
+
   if (newZoom !== currentZoom && newZoom > 1) {
     translateX -= offsetX * (factor - 1);
     translateY -= offsetY * (factor - 1);
   }
 
   currentZoom = newZoom;
-  
+
   if (currentZoom === 1) {
     translateX = 0;
     translateY = 0;
   }
-  
+
   updateTransform();
 }
 
@@ -41,59 +50,43 @@ function onDoubleClick(e) {
   if (!imgElement) return;
   e.preventDefault();
 
-  // Configuración: Si está lejos (< 3x), hacemos zoom a 3x. 
-  // Si ya está cerca (>= 3x), reseteamos a 1x.
   const targetZoom = currentZoom < 3 ? 3 : 1;
 
   if (targetZoom === 1) {
-    // Resetear al centro
     currentZoom = 1;
     translateX = 0;
     translateY = 0;
   } else {
-    // --- MATEMÁTICA DEL ZOOM PUNTUAL ---
     const rect = imgElement.getBoundingClientRect();
-    
-    // 1. Calculamos el centro visual actual de la imagen
     const centerVisualX = rect.left + rect.width / 2;
     const centerVisualY = rect.top + rect.height / 2;
-
-    // 2. Calculamos la distancia del click respecto a ese centro
     const distClickX = e.clientX - centerVisualX;
     const distClickY = e.clientY - centerVisualY;
-
-    // 3. Calculamos cuánto va a crecer la imagen (factor de escala)
     const factor = targetZoom / currentZoom;
 
-    // 4. Ajustamos la traslación para compensar el desplazamiento
-    // Movemos la imagen en dirección opuesta al click para mantener el punto bajo el mouse
     translateX -= distClickX * (factor - 1);
     translateY -= distClickY * (factor - 1);
-    
     currentZoom = targetZoom;
   }
 
   updateTransform();
 }
 
+// --- MOUSE HANDLERS ---
 function onMouseDown(e) {
   if (!imgElement || currentZoom <= 1) return;
-  
   isDragging = true;
   dragStartX = e.clientX - translateX;
   dragStartY = e.clientY - translateY;
-  
   imgElement.style.cursor = 'grabbing';
-  e.preventDefault(); 
+  e.preventDefault();
 }
 
 function onMouseMove(e) {
   if (!imgElement || !isDragging) return;
   e.preventDefault();
-  
   translateX = e.clientX - dragStartX;
   translateY = e.clientY - dragStartY;
-  
   updateTransform();
 }
 
@@ -103,12 +96,75 @@ function onMouseUp() {
   imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
 }
 
+// --- TOUCH HANDLERS (NUEVO) ---
+
+function onTouchStart(e) {
+  if (!imgElement) return;
+
+  if (e.touches.length === 1 && currentZoom > 1) {
+    // Modo Drag (solo si hay zoom)
+    isDragging = true;
+    dragStartX = e.touches[0].clientX - translateX;
+    dragStartY = e.touches[0].clientY - translateY;
+  } else if (e.touches.length === 2) {
+    // Modo Pinch
+    isDragging = false;
+    lastTouchDistance = getDistance(e.touches);
+  }
+}
+
+function onTouchMove(e) {
+  if (!imgElement) return;
+  e.preventDefault(); // Prevenir scroll de la página
+
+  if (e.touches.length === 1 && isDragging && currentZoom > 1) {
+    // Dragging
+    translateX = e.touches[0].clientX - dragStartX;
+    translateY = e.touches[0].clientY - dragStartY;
+    updateTransform();
+
+  } else if (e.touches.length === 2) {
+    // Pinch Zoom
+    const currentDistance = getDistance(e.touches);
+    if (lastTouchDistance > 0) {
+      const zoomFactor = currentDistance / lastTouchDistance;
+      // Ajustar velocidad del pinch
+      const newZoom = Math.max(1, Math.min(8, currentZoom * zoomFactor));
+
+      // Opcional: Zoom hacia el centro de los dos dedos (más complejo)
+      // Por ahora, zoom simple tipo "scale" que afecta traslación por transform-origin center
+      // Para que se sienta natural, deberíamos ajustar translateX/Y si quisiéramos zoom al punto medio
+
+      currentZoom = newZoom;
+      if (currentZoom === 1) {
+        translateX = 0;
+        translateY = 0;
+      }
+      updateTransform();
+    }
+    lastTouchDistance = currentDistance;
+  }
+}
+
+function onTouchEnd(e) {
+  if (!imgElement) return;
+
+  // Si levantamos un dedo y queda otro, podríamos pasar a drag, pero simple por ahora:
+  if (e.touches.length === 0) {
+    isDragging = false;
+  } else if (e.touches.length === 1) {
+    // Reiniciar drag para evitar saltos si pasamos de 2 dedos a 1
+    dragStartX = e.touches[0].clientX - translateX;
+    dragStartY = e.touches[0].clientY - translateY;
+    isDragging = true;
+  }
+}
+
 function updateTransform() {
   if (!imgElement) return;
   imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
-  
   if (!isDragging) {
-      imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
+    imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
   }
 }
 
@@ -123,18 +179,18 @@ export function zoomIn() {
 export function zoomOut() {
   if (!imgElement) return;
   currentZoom = Math.max(1, currentZoom - 0.5);
-  if (currentZoom === 1) { 
-    translateX = 0; 
-    translateY = 0; 
+  if (currentZoom === 1) {
+    translateX = 0;
+    translateY = 0;
   }
   updateTransform();
 }
 
 export function resetZoom() {
   if (!imgElement) return;
-  currentZoom = 1; 
-  translateX = 0; 
-  translateY = 0; 
+  currentZoom = 1;
+  translateX = 0;
+  translateY = 0;
   isDragging = false;
   imgElement.style.transform = 'none';
   imgElement.style.cursor = 'default';
@@ -145,12 +201,12 @@ export function resetZoom() {
 export function enableImageZoom() {
   root = document.getElementById('obra-modal-root');
   if (!root) return;
-  
+
   containerElement = root.querySelector('#image-view > div:first-child');
   imgElement = root.querySelector('#obra-img');
-  
+
   if (!imgElement || !containerElement) return;
-  
+
   // Resetear variables
   currentZoom = 1;
   translateX = 0;
@@ -170,12 +226,18 @@ export function enableImageZoom() {
 
   // Agregar listeners
   // "dblclick" es el evento nativo para doble click
-  imgElement.addEventListener('dblclick', onDoubleClick); 
+  imgElement.addEventListener('dblclick', onDoubleClick);
   imgElement.addEventListener('wheel', onWheel, { passive: false });
   imgElement.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
-  
+
+  // Touch Listeners
+  imgElement.addEventListener('touchstart', onTouchStart, { passive: false });
+  imgElement.addEventListener('touchmove', onTouchMove, { passive: false });
+  imgElement.addEventListener('touchend', onTouchEnd);
+  imgElement.addEventListener('touchcancel', onTouchEnd); // Buenas práctica
+
   if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
   if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
   if (zoomResetBtn) zoomResetBtn.addEventListener('click', resetZoom);
@@ -183,7 +245,7 @@ export function enableImageZoom() {
 
 export function disableImageZoom() {
   if (!root) { imgElement = null; return; }
-  
+
   const zoomInBtn = root.querySelector('#zoom-in');
   const zoomOutBtn = root.querySelector('#zoom-out');
   const zoomResetBtn = root.querySelector('#zoom-reset');
@@ -196,7 +258,7 @@ export function disableImageZoom() {
   }
 
   currentZoom = 1;
-  translateX = 0; 
+  translateX = 0;
   translateY = 0;
   isDragging = false;
   imgElement = null;
@@ -209,12 +271,16 @@ function cleanupListeners(btnIn, btnOut, btnReset) {
     imgElement.removeEventListener('dblclick', onDoubleClick);
     imgElement.removeEventListener('wheel', onWheel);
     imgElement.removeEventListener('mousedown', onMouseDown);
+    // Touch
+    imgElement.removeEventListener('touchstart', onTouchStart);
+    imgElement.removeEventListener('touchmove', onTouchMove);
+    imgElement.removeEventListener('touchend', onTouchEnd);
+    imgElement.removeEventListener('touchcancel', onTouchEnd);
   }
   window.removeEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseup', onMouseUp);
-  
+
   if (btnIn) btnIn.removeEventListener('click', zoomIn);
   if (btnOut) btnOut.removeEventListener('click', zoomOut);
   if (btnReset) btnReset.removeEventListener('click', resetZoom);
 }
-
