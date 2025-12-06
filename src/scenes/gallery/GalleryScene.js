@@ -98,18 +98,39 @@ export class GalleryScene {
     centralWall.position.set(0, wallHeight / 2, 0);
     this.scene.add(centralWall);
 
-    // Cargar imagen base.jpg
-    const imgWidth = 3.0;
-    const imgHeight = 2.0;
+    // --- CAMBIOS PARA AJUSTE DE IMAGEN ---
+    // La imagen ahora tiene exactamente el mismo tamaño que la pared
+    const imgWidth = wallWidth;
+    const imgHeight = wallHeight;
     const imgGeometry = new THREE.PlaneGeometry(imgWidth, imgHeight);
 
     const textureLoader = new THREE.TextureLoader();
-    const baseTexture = textureLoader.load('images/base.jpg');
+    
+    // Carga de textura con lógica "Cover" para evitar distorsión
+    const baseTexture = textureLoader.load('images/base.jpg', (tex) => {
+        const imageAspect = tex.image.width / tex.image.height;
+        const planeAspect = imgWidth / imgHeight;
+
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+
+        if (imageAspect > planeAspect) {
+            // Imagen más ancha: Recortar los lados
+            tex.repeat.set(planeAspect / imageAspect, 1);
+            tex.offset.x = (1 - tex.repeat.x) / 2;
+        } else {
+            // Imagen más alta: Recortar arriba/abajo
+            tex.repeat.set(1, imageAspect / planeAspect);
+            tex.offset.y = (1 - tex.repeat.y) / 2;
+        }
+        tex.needsUpdate = true;
+    });
 
     const imgMaterial = new THREE.MeshBasicMaterial({ map: baseTexture });
 
     const introMesh = new THREE.Mesh(imgGeometry, imgMaterial);
-    introMesh.position.set(0, wallHeight / 2, wallDepth / 2 + 0.02);
+    // Posición ajustada para cubrir la cara frontal de la pared
+    introMesh.position.set(0, wallHeight / 2, wallDepth / 2 + 0.01);
 
     this.scene.add(introMesh);
 

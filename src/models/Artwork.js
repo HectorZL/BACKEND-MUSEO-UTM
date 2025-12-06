@@ -295,3 +295,4 @@ export class Artwork {
     this.highResTexture = texture;
   }
 }
+
