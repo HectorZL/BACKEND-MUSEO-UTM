@@ -7,13 +7,10 @@ export function mountObraModal() {
   root.innerHTML = `
     <div class="absolute inset-0 bg-transparent" data-close></div>
     <div class="absolute inset-0 grid place-items-center p-4">
-      <!-- Backdrop -->
       <div class="absolute inset-0 bg-black/95 -z-10 backdrop-blur-md" data-close></div>
       
-      <!-- Image View -->
       <div id="image-view" class="w-full h-full flex flex-col bg-transparent relative pointer-events-none">
         
-        <!-- Botón Salir -->
         <div class="absolute top-4 left-4 z-20 pointer-events-auto">
           <button id="modal-back-btn" class="p-3 rounded-full bg-black/60 text-white hover:bg-green-900 w-12 h-12 flex items-center justify-center shadow-lg backdrop-blur-md border border-white/10 transition-all transform hover:scale-110" title="Volver a la galería">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -22,7 +19,6 @@ export function mountObraModal() {
           </button>
         </div>
 
-        <!-- Zoom Controls -->
         <div class="absolute top-4 right-4 flex gap-3 z-20 pointer-events-auto">
           <button id="zoom-in" class="p-3 rounded-full bg-black/60 text-white hover:bg-green-900 w-10 h-10 flex items-center justify-center backdrop-blur-md border border-white/10 transition-all" title="Acercar">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
@@ -35,16 +31,13 @@ export function mountObraModal() {
           </button>
         </div>
         
-        <!-- Image Container -->
         <div class="flex-1 relative flex items-center justify-center p-4 sm:p-8 pointer-events-auto">
           <div class="relative w-full h-full flex items-center justify-center">
-            <!-- Wrapper relativo para posicionar botón sobre la imagen -->
             <div class="relative inline-block"> 
                <img id="obra-img" alt="Obra" class="max-w-full max-h-[80vh] w-auto h-auto object-contain shadow-2xl drop-shadow-2xl transition-transform duration-200 ease-out origin-center"/>
                
-               <!-- Bottom Bar (Centered Info Button) -->
                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto z-20">
-                  <button id="show-details" class="group px-6 py-3 rounded-full bg-white/90 hover:bg-white text-green-900 backdrop-blur-md border border-white/20 shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2" title="Información">
+                  <button id="show-details" class="group px-6 py-3 rounded-full bg-white/40 hover:bg-white text-green-900 backdrop-blur-md border border-white/20 shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2" title="Información">
                      <span class="text-lg font-bold italic group-hover:not-italic transition-all">+</span>
                      <span class="text-sm font-bold uppercase tracking-wider">Detalles</span>
                   </button>
@@ -54,10 +47,8 @@ export function mountObraModal() {
         </div>
       </div>
 
-        <!-- Details View (CEDULA - Split Layout) -->
         <div id="details-view" class="hidden w-full max-w-5xl h-[85vh] bg-white overflow-hidden rounded-xl shadow-2xl flex flex-col md:flex-row pointer-events-auto">
           
-          <!-- LEFT COLUMN: Artist Info (1/4 width) -->
           <div class="w-full md:w-1/4 bg-green-50/80 border-b md:border-b-0 md:border-r border-green-100 p-6 flex flex-col items-center justify-start text-center shrink-0 overflow-y-auto max-h-[30vh] md:max-h-full">
              <div class="w-24 h-24 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-white shadow-lg mb-4 shrink-0 mx-auto">
                <img id="autor-detail-img" alt="Autor" class="w-full h-full object-cover"/>
@@ -69,15 +60,8 @@ export function mountObraModal() {
              </div>
           </div>
 
-          <!-- RIGHT COLUMN: Artwork Info (Rest of width) -->
           <div class="flex-1 flex flex-col min-w-0 bg-white relative h-full overflow-hidden">
             
-            <!-- Fixed Header (Title) - Optional, but keeps title detailed always visible if preferred. 
-                 User didn't explicitly ask for fixed title, only buttons. 
-                 Let's keep title in scrollable area but buttons fixed. 
-            -->
-
-            <!-- Scrollable Content -->
             <div class="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
                <h2 id="obra-detail-titulo" class="text-2xl md:text-4xl font-serif font-bold text-green-900 mb-6 border-b border-green-100 pb-4 leading-tight"></h2>
 
@@ -101,7 +85,6 @@ export function mountObraModal() {
                </div>
             </div>
             
-            <!-- Footer Buttons (Fixed at bottom) -->
             <div class="p-4 md:p-6 border-t border-gray-100 bg-white flex justify-between items-center z-20 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
               <button id="back-to-image" class="text-gray-500 hover:text-green-900 font-medium flex items-center gap-2 transition-colors px-3 py-2 rounded-lg hover:bg-gray-50 text-sm md:text-base">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -168,9 +151,6 @@ export function showObraModal(obra, callbacks = {}) {
   const imgElement = root.querySelector('#obra-img');
   imgElement.src = imageUrl;
   imgElement.alt = obra.titulo;
-
-  // NOTE: photo of painting removed from cedula as requested
-  // root.querySelector('#obra-detail-img').src = imageUrl;
 
   const obraNumber = obra.imagen.match(/\d+/)?.[0] || '01';
   const autorImageUrl = `images/${obraNumber.padStart(2, '0')}_autor.jpg`;
