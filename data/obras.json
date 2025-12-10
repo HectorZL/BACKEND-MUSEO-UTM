@@ -1,0 +1,112 @@
+[
+    {
+        "id": 1,
+        "slug": "el-nacimiento-y-la-muerte",
+        "titulo": "EL NACIMIENTO Y LA MUERTE",
+        "autor": "Emily Rosa Angulo Ríos",
+        "rol": "Estudiante de Medicina",
+        "tecnica": "Acrílico",
+        "tamano": "40x60 cm",
+        "descripcion": "Mujer Valdivia embarazada con un búho al acecho: la vida (madre y nacimiento) y la muerte (búho) en oposición bajo luna llena; el búho como símbolo de lo desconocido y la mortalidad.",
+        "imagen": "images/01_el-nacimiento-y-la-muerte.jpg"
+    },
+    {
+        "id": 2,
+        "slug": "urnas-de-la-noche",
+        "titulo": "URNAS DE LA NOCHE",
+        "autor": "Luis Hernán Moreno Santacruz",
+        "rol": "Estudiante de Pedagogía de la Lengua y la Literatura",
+        "tecnica": "Achurado en rapidógrafo",
+        "tamano": "42x59.4 cm",
+        "descripcion": "Búho como soporte que transporta a los muertos al llamado de los vivos; un chamán en silla manteña guía a los ancestros que emergen en sus urnas.",
+        "imagen": "images/02_urnas-de-la-noche.jpg"
+    },
+    {
+        "id": 3,
+        "slug": "venus-raiz-de-pasado-y-presente",
+        "titulo": "VENUS, RAÍZ DE PASADO Y PRESENTE",
+        "autor": "Saráí Alessandra Delgado Vélez",
+        "rol": "Estudiante de Bioquímica y Farmacia",
+        "tecnica": "Acrílico",
+        "tamano": "50x70 cm",
+        "descripcion": "Homenaje al poder ancestral de las 'Venus de Valdivia'; fusión de la figura ancestral y la humana contemporánea que conecta pasado y presente, reconociendo la fuerza creadora femenina.",
+        "imagen": "images/03_venus-raiz.jpg"
+    },
+    {
+        "id": 4,
+        "slug": "renacimiento-ancestral",
+        "titulo": "RENACIMIENTO ANCESTRAL",
+        "autor": "Jackson Emanuel Párraga Mejía",
+        "rol": "Estudiante de Arquitectura",
+        "tecnica": "Carboncillo",
+        "tamano": "42x59 cm",
+        "descripcion": "Visión precolombina sobre lo efímero y la continuidad de la vida; urna funeraria con huesos, figurillas y brote de paja toquilla como símbolo identitario.",
+        "imagen": "images/04_renacimiento-ancestral.jpg"
+    },
+    {
+        "id": 5,
+        "slug": "ritual-simbolico-bajo-la-luna-llena",
+        "titulo": "RITUAL SIMBÓLICO BAJO LA LUNA LLENA",
+        "autor": "Nayelly Stefanía Párraga Alarcón",
+        "rol": "Estudiante de Ingeniería en Software",
+        "tecnica": "Acrílico, esfero y lápiz",
+        "tamano": "40x60 cm",
+        "descripcion": "Mortero Valdivia del que emergen manos femeninas preparando sustancias sagradas; fogata, mar y balsas de fondo; atmósfera mística iluminada por luna llena.",
+        "imagen": "images/05_ritual-simbolico.jpg"
+    },
+    {
+        "id": 6,
+        "slug": "valdivia-creacion-cambio-y-espiritu",
+        "titulo": "VALDIVIA: CREACIÓN CAMBIO Y ESPÍRITU",
+        "autor": "Valeria Yamilleth Jara López",
+        "rol": "Estudiante de Ingeniería Química",
+        "tecnica": "Acrílico sobre lienzo",
+        "tamano": "50x70 cm",
+        "descripcion": "Transformación de cerámica y lítica Valdivia: de vasijas utilitarias a figurillas femeninas simbólicas; rol central de la mujer; mortero y visión sagrada del mundo material.",
+        "imagen": "images/06_valdivia-creacion.jpg"
+    },
+    {
+        "id": 7,
+        "slug": "temp-lural",
+        "titulo": "TEMP-LURAL",
+        "autor": "Ana María Castro Morrillo",
+        "rol": "Estudiante de Pedagogía de la Lengua y la Literatura",
+        "tecnica": "Acrílico",
+        "tamano": "40x60 cm",
+        "descripcion": "Fusión de tiempo, cultura y pluralidad: escena del pasado con figuras humanas y objetos arqueológicos (vasijas, morteros, silbatos, piedras de moler) como testigos de vida ancestral.",
+        "imagen": "images/07_temp-lural.jpg"
+    },
+    {
+        "id": 8,
+        "slug": "velas-del-tiempo",
+        "titulo": "VELAS DEL TIEMPO",
+        "autor": "Diana Carolina Mero Cedeño",
+        "rol": "Estudiante de Psicopedagogía",
+        "tecnica": "Acrílico",
+        "tamano": "50x70 cm",
+        "descripcion": "Balsa manteña usada para navegar y comerciar (cerámica, textiles, metales, spondylus); materiales, velas y timones descritos históricamente para alta resistencia.",
+        "imagen": "images/08_velas-del-tiempo.jpg"
+    },
+    {
+        "id": 9,
+        "slug": "alquimia-ancestral",
+        "titulo": "ALQUIMIA ANCESTRAL",
+        "autor": "Angie Alexi Martínez Balderramo",
+        "rol": "Estudiante de Laboratorio Clínico",
+        "tecnica": "Acrílico",
+        "tamano": "50x70 cm",
+        "descripcion": "Evolución de la medicina: mujer Valdivia con mortero zoomorfo; humo-serpiente como símbolo de sanación; animales rituales (jaguar, zarigüeya, búho) y hospital al fondo.",
+        "imagen": "images/09_alquimia-ancestral.jpg"
+    },
+    {
+        "id": 10,
+        "slug": "rito-chamanico",
+        "titulo": "RITO CHAMÁNICO",
+        "autor": "Alan Geremias Vinces Guerrero",
+        "rol": "Estudiante de Bibliotecología Documentación y Archivo",
+        "tecnica": "Pintura acrílica diluida con agua, lápiz y rapidógrafo",
+        "tamano": "42x60 cm",
+        "descripcion": "Ritual ancestral con vasija ceremonial y tres chamanes; a la izquierda, urnas funerarias con oro y granos; a la derecha, ofrendas; fuego central bajo la noche.",
+        "imagen": "images/10_rito-chamanico.jpg"
+    }
+]

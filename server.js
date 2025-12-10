@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import fetch from 'node-fetch'; // <-- Necesario para Node < 18
 import db from './db.js'; // Nuestro módulo de conexión a la BD
 import multer from 'multer';
+import fs from 'fs';
 
 // --- Configuración Inicial ---
 const __filename = fileURLToPath(import.meta.url);
@@ -18,6 +19,21 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Configuración de fuente de datos: 'json' o 'database'
+const DATA_SOURCE = process.env.DATA_SOURCE || 'database';
+
+// Función auxiliar para cargar datos del JSON
+const loadObrasFromJSON = () => {
+  try {
+    const jsonPath = path.join(__dirname, 'data', 'obras.json');
+    const jsonData = fs.readFileSync(jsonPath, 'utf-8');
+    return JSON.parse(jsonData);
+  } catch (err) {
+    console.error('Error al leer obras.json:', err.message);
+    return [];
+  }
+};
 
 // --- Configurar Sirv y Multer ---
 const storage = multer.memoryStorage();
@@ -29,7 +45,7 @@ const sirvClientId = process.env.SIRV_CLIENT_ID;
 const sirvClientSecret = process.env.SIRV_CLIENT_SECRET;
 
 // --- Middlewares Globales ---
-app.use(cors()); 
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -44,7 +60,7 @@ app.use((req, res, next) => {
 // --- Middleware de Autenticación (JWT) ---
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Acceso denegado. No se proveyó token.' });
   }
   try {
@@ -125,11 +141,11 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const userResult = await db.query('SELECT * FROM usuarios_admin WHERE email = $1', [email]);
-    
+
     if (userResult.rows.length === 0) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
-    
+
     const user = userResult.rows[0];
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
@@ -168,20 +184,44 @@ app.get('/api/ping', (req, res) => {
 // GET /api/obras
 app.get('/api/obras', async (req, res) => {
   try {
-    const query = `
-      SELECT 
-        o.*, 
-        a.nombre AS autor_nombre, 
-        a.apellido AS autor_apellido,
-        a.ocupacion AS autor_rol, 
-        c.nombre AS coleccion_nombre
-      FROM obras o
-      LEFT JOIN autores a ON o.autor_id = a.id
-      LEFT JOIN colecciones c ON o.coleccion_id = c.id
-      ORDER BY o.id ASC
-    `;
-    const allObras = await db.query(query);
-    res.json(allObras.rows);
+    if (DATA_SOURCE === 'json') {
+      // Cargar desde JSON
+      const obrasJSON = loadObrasFromJSON();
+
+      // Transformar el formato JSON al formato esperado por el frontend
+      const obrasTransformadas = obrasJSON.map(obra => ({
+        id: obra.id,
+        slug: obra.slug,
+        titulo: obra.titulo,
+        descripcion: obra.descripcion,
+        tecnica: obra.tecnica,
+        tamano: obra.tamano,
+        fecha_creacion: null,
+        imagen_url: obra.imagen,
+        autor_nombre: obra.autor.split(' ')[0],
+        autor_apellido: obra.autor.split(' ').slice(1).join(' '),
+        autor_rol: obra.rol,
+        coleccion_nombre: null
+      }));
+
+      res.json(obrasTransformadas);
+    } else {
+      // Cargar desde base de datos
+      const query = `
+        SELECT 
+          o.*, 
+          a.nombre AS autor_nombre, 
+          a.apellido AS autor_apellido,
+          a.ocupacion AS autor_rol, 
+          c.nombre AS coleccion_nombre
+        FROM obras o
+        LEFT JOIN autores a ON o.autor_id = a.id
+        LEFT JOIN colecciones c ON o.coleccion_id = c.id
+        ORDER BY o.id ASC
+      `;
+      const allObras = await db.query(query);
+      res.json(allObras.rows);
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Error del servidor');
@@ -192,20 +232,50 @@ app.get('/api/obras', async (req, res) => {
 app.get('/api/obras/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `
-      SELECT 
-        o.*, 
-        a.nombre AS autor_nombre, 
-        a.apellido AS autor_apellido,
-        c.nombre AS coleccion_nombre
-      FROM obras o
-      LEFT JOIN autores a ON o.autor_id = a.id
-      LEFT JOIN colecciones c ON o.coleccion_id = c.id
-      WHERE o.id = $1
-    `;
-    const obra = await db.query(query, [id]);
-    if (obra.rows.length === 0) return res.status(404).json('Obra no encontrada');
-    res.json(obra.rows[0]);
+
+    if (DATA_SOURCE === 'json') {
+      // Cargar desde JSON
+      const obrasJSON = loadObrasFromJSON();
+      const obra = obrasJSON.find(o => o.id === parseInt(id));
+
+      if (!obra) {
+        return res.status(404).json('Obra no encontrada');
+      }
+
+      // Transformar al formato esperado
+      const obraTransformada = {
+        id: obra.id,
+        slug: obra.slug,
+        titulo: obra.titulo,
+        descripcion: obra.descripcion,
+        tecnica: obra.tecnica,
+        tamano: obra.tamano,
+        fecha_creacion: null,
+        imagen_url: obra.imagen,
+        autor_nombre: obra.autor.split(' ')[0],
+        autor_apellido: obra.autor.split(' ').slice(1).join(' '),
+        autor_rol: obra.rol,
+        coleccion_nombre: null
+      };
+
+      res.json(obraTransformada);
+    } else {
+      // Cargar desde base de datos
+      const query = `
+        SELECT 
+          o.*, 
+          a.nombre AS autor_nombre, 
+          a.apellido AS autor_apellido,
+          c.nombre AS coleccion_nombre
+        FROM obras o
+        LEFT JOIN autores a ON o.autor_id = a.id
+        LEFT JOIN colecciones c ON o.coleccion_id = c.id
+        WHERE o.id = $1
+      `;
+      const obra = await db.query(query, [id]);
+      if (obra.rows.length === 0) return res.status(404).json('Obra no encontrada');
+      res.json(obra.rows[0]);
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Error del servidor');
@@ -241,13 +311,13 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
 
     // --- ¡CAMBIO! Llamar a uploadToSirv ---
     const imageUrl = await uploadToSirv(
-      req.file.buffer, 
-      req.file.originalname, 
+      req.file.buffer,
+      req.file.originalname,
       'galeria-museo-obras'
     );
 
     const { titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
-    
+
     const newObra = await db.query(
       `INSERT INTO obras (titulo, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
@@ -265,14 +335,14 @@ app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), as
   try {
     const { id } = req.params;
     const { titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
-    
+
     let imageUrl;
-    
+
     if (req.file) {
       // --- ¡CAMBIO! Llamar a uploadToSirv ---
       imageUrl = await uploadToSirv(
-        req.file.buffer, 
-        req.file.originalname, 
+        req.file.buffer,
+        req.file.originalname,
         'galeria-museo-obras'
       );
     }
@@ -291,7 +361,7 @@ app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), as
         [titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id, id]
       );
     }
-    
+
     if (updatedObra.rows.length === 0) return res.status(404).json('Obra no encontrada');
     res.json(updatedObra.rows[0]);
   } catch (err) {
@@ -306,7 +376,7 @@ app.delete('/api/admin/obras/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     await db.query('DELETE FROM obras_exhibiciones WHERE obra_id = $1', [id]);
     const deleteOp = await db.query('DELETE FROM obras WHERE id = $1 RETURNING *', [id]);
-    
+
     if (deleteOp.rows.length === 0) {
       return res.status(404).json('Obra no encontrada');
     }
@@ -323,17 +393,17 @@ app.delete('/api/admin/obras/:id', authMiddleware, async (req, res) => {
 app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async (req, res) => {
   try {
     const { nombre, apellido, ocupacion } = req.body;
-    let fotoUrl = null; 
+    let fotoUrl = null;
 
     if (req.file) {
       // --- ¡CAMBIO! Llamar a uploadToSirv ---
       fotoUrl = await uploadToSirv(
-        req.file.buffer, 
-        req.file.originalname, 
+        req.file.buffer,
+        req.file.originalname,
         'galeria-museo-autores'
       );
     }
-    
+
     const newAutor = await db.query(
       'INSERT INTO autores (nombre, apellido, ocupacion, foto_url) VALUES ($1, $2, $3, $4) RETURNING *',
       [nombre, apellido, ocupacion, fotoUrl]
@@ -347,16 +417,16 @@ app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async
 
 // PUT /api/admin/autores/:id
 app.put('/api/admin/autores/:id', authMiddleware, upload.single('foto_file'), async (req, res) => {
-   try {
+  try {
     const { id } = req.params;
     const { nombre, apellido, ocupacion } = req.body;
     let fotoUrl;
-    
+
     if (req.file) {
       // --- ¡CAMBIO! Llamar a uploadToSirv ---
       fotoUrl = await uploadToSirv(
-        req.file.buffer, 
-        req.file.originalname, 
+        req.file.buffer,
+        req.file.originalname,
         'galeria-museo-autores'
       );
     }
@@ -485,14 +555,14 @@ app.use((err, req, res, next) => {
 function startKeepAlive() {
   const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
   const minutes = 10;
-  const interval = minutes * 60 * 1000; 
-  
+  const interval = minutes * 60 * 1000;
+
   console.log(`Configurando Keep-Alive para URL: ${RENDER_EXTERNAL_URL} cada ${minutes} minutos.`);
 
   setInterval(async () => {
     try {
-      const response = await fetch(`${RENDER_EXTERNAL_URL}/api/ping`); 
-      
+      const response = await fetch(`${RENDER_EXTERNAL_URL}/api/ping`);
+
       if (response.ok) {
         const data = await response.json();
         console.log(`[Keep-Alive] Ping exitoso (${new Date().toLocaleTimeString()}) - ${data.message}`);
